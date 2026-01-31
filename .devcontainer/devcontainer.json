@@ -1,0 +1,14 @@
+{
+  "name": "ERA Network Bot - Claude",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",
+  "features": {
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
+  },
+  "containerEnv": {
+    "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}",
+    "SLACK_BOT_TOKEN": "${localEnv:SLACK_BOT_TOKEN}",
+    "SLACK_APP_TOKEN": "${localEnv:SLACK_APP_TOKEN}"
+  },
+  "postCreateCommand": "pip install google-genai slack-bolt pydantic",
+  "containerUser": "vscode"
+}
