@@ -1,6 +1,10 @@
 import json
+import time
+import logging
 from pydantic import BaseModel
 import anthropic
+
+logger = logging.getLogger(__name__)
 
 from src.config import (
     ANTHROPIC_API_KEY,
@@ -48,27 +52,53 @@ def _get_client() -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 
-def _tool_use_call(client, model, system, messages, schema_class, tool_name, **kwargs):
-    """Make an API call using tool-use for structured output (SDK fallback)."""
+def _tool_use_call(client, model, system, messages, schema_class, tool_name, retries=1, **kwargs):
+    """Make an API call using tool-use for structured output, with retry on failure."""
     tools = [{
         "name": tool_name,
         "description": f"Report the {tool_name} results",
         "input_schema": schema_class.model_json_schema(),
     }]
-    message = client.messages.create(
-        model=model,
-        max_tokens=4096,
-        system=system,
-        messages=messages,
-        tools=tools,
-        tool_choice={"type": "tool", "name": tool_name},
-        **kwargs,
-    )
-    # Extract tool_use block
-    for block in message.content:
-        if block.type == "tool_use":
-            return schema_class.model_validate(block.input)
-    raise ValueError(f"No tool_use block in response for {tool_name}")
+    last_err = None
+    for attempt in range(1 + retries):
+        try:
+            start = time.time()
+            message = client.messages.create(
+                model=model,
+                max_tokens=4096,
+                system=system,
+                messages=messages,
+                tools=tools,
+                tool_choice={"type": "tool", "name": tool_name},
+                **kwargs,
+            )
+            elapsed = time.time() - start
+
+            # Log usage
+            usage = getattr(message, "usage", None)
+            logger.info(
+                "API call %s: model=%s elapsed=%.1fs stop=%s input=%s output=%s cache_read=%s cache_create=%s",
+                tool_name, model, elapsed,
+                message.stop_reason,
+                getattr(usage, "input_tokens", "?"),
+                getattr(usage, "output_tokens", "?"),
+                getattr(usage, "cache_read_input_tokens", 0),
+                getattr(usage, "cache_creation_input_tokens", 0),
+            )
+
+            for block in message.content:
+                if block.type == "tool_use":
+                    return schema_class.model_validate(block.input)
+            raise ValueError(f"No tool_use block in response for {tool_name}")
+        except (anthropic.APITimeoutError, anthropic.APIConnectionError, anthropic.RateLimitError) as e:
+            last_err = e
+            if attempt < retries:
+                wait = 2 ** attempt
+                logger.warning("Retrying %s after %s (attempt %d): %s", tool_name, wait, attempt + 1, e)
+                time.sleep(wait)
+            else:
+                raise
+    raise last_err  # unreachable but satisfies type checker
 
 
 def _format_company_context(company: dict | None) -> str:

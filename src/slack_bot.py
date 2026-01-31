@@ -177,6 +177,16 @@ def _register_handlers(app: App):
             text=f":white_check_mark: Got it, you're with *{selected}*. What can I help you find in the ERA network?",
         )
 
+    @app.event("reaction_added")
+    def handle_reaction(event, client):
+        """Log feedback reactions (thumbsup/thumbsdown) on bot messages."""
+        reaction = event.get("reaction", "")
+        if reaction in ("+1", "thumbsup", "-1", "thumbsdown"):
+            logger.info(
+                "Feedback: user=%s reaction=%s channel=%s ts=%s",
+                event.get("user"), reaction, event.get("item", {}).get("channel"), event.get("item", {}).get("ts"),
+            )
+
 
 def start():
     """Start the Slack bot via Socket Mode."""
