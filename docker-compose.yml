@@ -1,0 +1,20 @@
+services:
+  bot:
+    build: .
+    restart: unless-stopped
+    volumes:
+      # Mount the read-only network DB and writable query log
+      - ./data:/app/data
+    environment:
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID}
+      # If not using Secret Manager, uncomment these:
+      # - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+      # - SLACK_APP_TOKEN=${SLACK_APP_TOKEN}
+    # Mount GCP service account credentials for Secret Manager
+    # The VM's default service account is used automatically on Compute Engine,
+    # so this volume is only needed if running outside GCP.
+    # volumes:
+    #   - /path/to/service-account.json:/app/sa.json:ro
+    # environment:
+    #   - GOOGLE_APPLICATION_CREDENTIALS=/app/sa.json

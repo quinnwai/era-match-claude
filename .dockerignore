@@ -1,0 +1,16 @@
+.env
+.git
+.gitignore
+.dockerignore
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.db
+*.sqlite3
+data/
+tests/
+CLAUDE.md
+DEPLOY.md
+README.md
+.devcontainer/
