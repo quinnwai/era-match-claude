@@ -8,7 +8,11 @@ from src.config import PROJECT_ROOT
 
 logger = logging.getLogger(__name__)
 
-LOG_DB_PATH = str(PROJECT_ROOT / "era_query_log.db")
+_data_dir = PROJECT_ROOT / "data"
+if _data_dir.is_dir():
+    LOG_DB_PATH = str(_data_dir / "era_query_log.db")
+else:
+    LOG_DB_PATH = str(PROJECT_ROOT / "era_query_log.db")
 
 _CREATE_TABLE = """
 CREATE TABLE IF NOT EXISTS query_log (
