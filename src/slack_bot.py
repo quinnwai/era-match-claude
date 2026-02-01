@@ -29,6 +29,21 @@ def _set_founder_company(user_id: str, company_name: str):
     _user_company_map[user_id] = company_name
 
 
+def _try_match_company_name(text: str) -> str | None:
+    """Try to fuzzy-match user text to an ERA30 company name."""
+    companies = get_all_era30_companies(DB_PATH)
+    text_lower = text.lower().strip()
+    # Exact match
+    for c in companies:
+        if c["name"].lower() == text_lower:
+            return c["name"]
+    # Substring match (e.g. "aerium" in "I'm with Aerium")
+    for c in companies:
+        if c["name"].lower() in text_lower:
+            return c["name"]
+    return None
+
+
 def _build_company_selection_blocks() -> list[dict]:
     """Build Block Kit blocks for company selection."""
     companies = get_all_era30_companies(DB_PATH)
@@ -119,11 +134,23 @@ def _process_ask(event, client):
     # Check if founder is identified
     company_name = _identify_founder(user_id, client)
     if not company_name:
+        # Try to match typed company name
+        matched = _try_match_company_name(text)
+        if matched:
+            _set_founder_company(user_id, matched)
+            client.chat_postMessage(
+                channel=channel,
+                thread_ts=thread_ts,
+                text=f":white_check_mark: Got it, you're with *{matched}*. What can I help you find in the ERA network?",
+            )
+            return
+        # Ask them to identify
+        companies = get_all_era30_companies(DB_PATH)
+        names = ", ".join(c["name"] for c in companies)
         client.chat_postMessage(
             channel=channel,
             thread_ts=thread_ts,
-            blocks=_build_company_selection_blocks(),
-            text="Which ERA30 company are you with?",
+            text=f"Welcome to the ERA Network Bot! Which company are you with?\n\nJust type your company name. Options: {names}",
         )
         return
 
@@ -168,6 +195,7 @@ def _register_handlers(app: App):
     @app.action("select_company")
     def handle_company_selection(ack, body, client):
         ack()
+        logger.info("Company selection action received: %s", body)
         user_id = body["user"]["id"]
         selected = body["actions"][0]["selected_option"]["value"]
         _set_founder_company(user_id, selected)
