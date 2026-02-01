@@ -8,8 +8,12 @@ DB_PATH = str(PROJECT_ROOT / "era_network_lite.db")
 
 # API keys
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 SLACK_BOT_TOKEN = os.getenv("SLACK_BOT_TOKEN", "")
 SLACK_APP_TOKEN = os.getenv("SLACK_APP_TOKEN", "")
+
+# Backend selection
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "claude").lower()
 
 # Model config
 STAGE1_MODEL = "claude-sonnet-4-5-20250929"
