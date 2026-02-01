@@ -181,12 +181,18 @@ def stage2_rank(ask: str, company_context: str, full_profiles: str) -> list[dict
 
 def run_matching_pipeline(ask: str, company_name: str, db_path: str = DB_PATH) -> dict:
     """Full pipeline: clarity check -> stage1 -> stage2 -> formatted results."""
+    import time as _time
+    t0 = _time.time()
+
     company = get_company_context(db_path, company_name)
     company_ctx = _format_company_context(company)
+    logger.info("[STEP 0] Clarity check starting — company=%s ask=%r", company_name, ask[:80])
 
     # Step 0: Clarity check
     clarity = assess_ask_clarity(ask, company_ctx)
+    logger.info("[STEP 0] Clarity result: is_clear=%s (%.1fs elapsed)", clarity["is_clear"], _time.time() - t0)
     if not clarity["is_clear"]:
+        logger.info("[STEP 0] Returning clarifying question")
         return {
             "type": "clarification",
             "clarifying_question": clarity["clarifying_question"],
@@ -195,12 +201,18 @@ def run_matching_pipeline(ask: str, company_name: str, db_path: str = DB_PATH) -
         }
 
     # Step 1: Screen
+    logger.info("[STEP 1] Building compressed profiles...")
     compressed = get_compressed_profiles(db_path, shuffle=True)
+    logger.info("[STEP 1] Screening %d chars of profiles...", len(compressed))
     candidate_ids = stage1_screen(ask, company_ctx, compressed)
+    logger.info("[STEP 1] Screened → %d candidates (%.1fs elapsed)", len(candidate_ids), _time.time() - t0)
 
     # Step 2: Rank
+    logger.info("[STEP 2] Building full profiles for %d candidates...", len(candidate_ids))
     full_profiles = get_full_profiles(db_path, candidate_ids)
+    logger.info("[STEP 2] Ranking...")
     matches = stage2_rank(ask, company_ctx, full_profiles)
+    logger.info("[STEP 2] Done → %d matches (%.1fs total)", len(matches), _time.time() - t0)
 
     return {
         "type": "matches",

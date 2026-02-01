@@ -109,16 +109,20 @@ def _process_ask(event, client):
     thread_ts = event.get("thread_ts") or event["ts"]
     text = event.get("text", "").strip()
 
+    logger.info("[RECV] user=%s channel=%s thread_ts=%s text=%r", user_id, channel, thread_ts, text[:100])
+
     # Remove bot mention if present
     if text.startswith("<@"):
         text = text.split(">", 1)[-1].strip()
 
     if not text:
+        logger.info("[SKIP] Empty text after cleanup")
         return
 
     # Check if founder is identified
     company_name = _identify_founder(user_id, client)
     if not company_name:
+        logger.info("[ID] Founder not identified, sending company selection")
         client.chat_postMessage(
             channel=channel,
             thread_ts=thread_ts,
@@ -127,15 +131,21 @@ def _process_ask(event, client):
         )
         return
 
+    logger.info("[PIPELINE] Starting pipeline for company=%s ask=%r", company_name, text[:80])
+
     # Post thinking indicator
     thinking = client.chat_postMessage(
         channel=channel,
         thread_ts=thread_ts,
         text=":mag: Searching the ERA network...",
     )
+    logger.info("[PIPELINE] Posted thinking indicator")
 
     try:
         results = run_matching_pipeline(text, company_name, DB_PATH)
+        logger.info("[PIPELINE] Complete — type=%s matches=%d",
+                     results["type"],
+                     len(results.get("matches") or []))
         blocks = format_results_as_blocks(results)
         client.chat_update(
             channel=channel,
@@ -143,8 +153,9 @@ def _process_ask(event, client):
             blocks=blocks,
             text="Here are your matches",
         )
+        logger.info("[PIPELINE] Results posted to Slack")
     except Exception as e:
-        logger.exception("Pipeline error")
+        logger.exception("[PIPELINE] Error: %s", e)
         client.chat_update(
             channel=channel,
             ts=thinking["ts"],
@@ -157,11 +168,18 @@ def _register_handlers(app: App):
 
     @app.event("message")
     def handle_dm(event, client):
+        logger.info("[EVENT] message: channel_type=%s bot_id=%s subtype=%s user=%s text=%r",
+                     event.get("channel_type"), event.get("bot_id"), event.get("subtype"),
+                     event.get("user"), (event.get("text") or "")[:80])
+        if event.get("subtype"):
+            logger.info("[SKIP] Ignoring message with subtype=%s", event.get("subtype"))
+            return
         if event.get("channel_type") == "im" and not event.get("bot_id"):
             _process_ask(event, client)
 
     @app.event("app_mention")
     def handle_mention(event, client):
+        logger.info("[EVENT] app_mention: user=%s text=%r", event.get("user"), (event.get("text") or "")[:80])
         if not event.get("bot_id"):
             _process_ask(event, client)
 
