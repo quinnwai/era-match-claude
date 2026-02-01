@@ -172,8 +172,11 @@ def _register_handlers(app: App):
         selected = body["actions"][0]["selected_option"]["value"]
         _set_founder_company(user_id, selected)
         channel = body["channel"]["id"]
+        # Thread the reply under the message containing the dropdown
+        message_ts = body.get("message", {}).get("ts") or body.get("container", {}).get("message_ts")
         client.chat_postMessage(
             channel=channel,
+            thread_ts=message_ts,
             text=f":white_check_mark: Got it, you're with *{selected}*. What can I help you find in the ERA network?",
         )
 
