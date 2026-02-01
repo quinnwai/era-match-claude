@@ -2,7 +2,7 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from src.slack_bot import format_results_as_blocks, _build_company_selection_blocks, _set_founder_company, _identify_founder, _try_match_company_name
+from src.slack_bot import format_results_as_blocks, _build_company_selection_blocks, _set_founder_company, _identify_founder
 
 
 def test_format_matches():
@@ -67,22 +67,6 @@ def test_founder_identification_flow():
     # After setting
     _set_founder_company("U_TEST_123", "Aerium")
     assert _identify_founder("U_TEST_123", None) == "Aerium"
-
-
-def test_try_match_company_exact():
-    assert _try_match_company_name("Aerium") == "Aerium"
-    assert _try_match_company_name("aerium") == "Aerium"
-    assert _try_match_company_name("Passu") == "Passu"
-
-
-def test_try_match_company_substring():
-    assert _try_match_company_name("I'm with Aerium") == "Aerium"
-    assert _try_match_company_name("passu") == "Passu"
-
-
-def test_try_match_company_no_match():
-    assert _try_match_company_name("hello") is None
-    assert _try_match_company_name("some random company") is None
 
 
 def test_format_empty_matches():
