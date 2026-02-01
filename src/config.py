@@ -2,10 +2,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
-
-# Paths
 PROJECT_ROOT = Path(__file__).parent.parent
+load_dotenv(PROJECT_ROOT / ".env", override=True)
 DB_PATH = str(PROJECT_ROOT / "era_network_lite.db")
 
 # API keys

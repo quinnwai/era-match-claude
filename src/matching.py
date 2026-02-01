@@ -179,10 +179,13 @@ def stage2_rank(ask: str, company_context: str, full_profiles: str) -> list[dict
     return [m.model_dump() for m in result.matches]
 
 
-def run_matching_pipeline(ask: str, company_name: str, db_path: str = DB_PATH) -> dict:
+def run_matching_pipeline(ask: str, company_name: str, db_path: str = DB_PATH, slack_user_id: str | None = None) -> dict:
     """Full pipeline: clarity check -> stage1 -> stage2 -> formatted results."""
     import time as _time
+    from src.query_log import log_query
+
     t0 = _time.time()
+    timings = {}
 
     company = get_company_context(db_path, company_name)
     company_ctx = _format_company_context(company)
@@ -190,9 +193,15 @@ def run_matching_pipeline(ask: str, company_name: str, db_path: str = DB_PATH) -
 
     # Step 0: Clarity check
     clarity = assess_ask_clarity(ask, company_ctx)
-    logger.info("[STEP 0] Clarity result: is_clear=%s (%.1fs elapsed)", clarity["is_clear"], _time.time() - t0)
+    timings["clarity"] = _time.time() - t0
+    logger.info("[STEP 0] Clarity result: is_clear=%s (%.1fs elapsed)", clarity["is_clear"], timings["clarity"])
     if not clarity["is_clear"]:
         logger.info("[STEP 0] Returning clarifying question")
+        log_query(
+            slack_user_id=slack_user_id, company_name=company_name, ask_text=ask,
+            result_type="clarification", clarifying_question=clarity["clarifying_question"],
+            clarity_secs=timings["clarity"], total_secs=_time.time() - t0,
+        )
         return {
             "type": "clarification",
             "clarifying_question": clarity["clarifying_question"],
@@ -204,15 +213,29 @@ def run_matching_pipeline(ask: str, company_name: str, db_path: str = DB_PATH) -
     logger.info("[STEP 1] Building compressed profiles...")
     compressed = get_compressed_profiles(db_path, shuffle=True)
     logger.info("[STEP 1] Screening %d chars of profiles...", len(compressed))
+    t1 = _time.time()
     candidate_ids = stage1_screen(ask, company_ctx, compressed)
-    logger.info("[STEP 1] Screened → %d candidates (%.1fs elapsed)", len(candidate_ids), _time.time() - t0)
+    timings["stage1"] = _time.time() - t1
+    logger.info("[STEP 1] Screened → %d candidates (%.1fs stage1, %.1fs elapsed)", len(candidate_ids), timings["stage1"], _time.time() - t0)
 
     # Step 2: Rank
     logger.info("[STEP 2] Building full profiles for %d candidates...", len(candidate_ids))
     full_profiles = get_full_profiles(db_path, candidate_ids)
     logger.info("[STEP 2] Ranking...")
+    t2 = _time.time()
     matches = stage2_rank(ask, company_ctx, full_profiles)
-    logger.info("[STEP 2] Done → %d matches (%.1fs total)", len(matches), _time.time() - t0)
+    timings["stage2"] = _time.time() - t2
+    total = _time.time() - t0
+    logger.info("[STEP 2] Done → %d matches (%.1fs stage2, %.1fs total)", len(matches), timings["stage2"], total)
+
+    log_query(
+        slack_user_id=slack_user_id, company_name=company_name, ask_text=ask,
+        result_type="matches",
+        match_ids=[m["contact_id"] for m in matches],
+        match_names=[m["name"] for m in matches],
+        clarity_secs=timings["clarity"], stage1_secs=timings["stage1"],
+        stage2_secs=timings["stage2"], total_secs=total,
+    )
 
     return {
         "type": "matches",

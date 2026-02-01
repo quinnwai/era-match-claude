@@ -142,7 +142,7 @@ def _process_ask(event, client):
     logger.info("[PIPELINE] Posted thinking indicator")
 
     try:
-        results = run_matching_pipeline(text, company_name, DB_PATH)
+        results = run_matching_pipeline(text, company_name, DB_PATH, slack_user_id=user_id)
         logger.info("[PIPELINE] Complete — type=%s matches=%d",
                      results["type"],
                      len(results.get("matches") or []))
@@ -167,14 +167,18 @@ def _register_handlers(app: App):
     """Register event and action handlers on the app."""
 
     @app.event("message")
-    def handle_dm(event, client):
-        logger.info("[EVENT] message: channel_type=%s bot_id=%s subtype=%s user=%s text=%r",
+    def handle_message(event, client):
+        logger.info("[EVENT] message: channel_type=%s bot_id=%s subtype=%s user=%s thread_ts=%s text=%r",
                      event.get("channel_type"), event.get("bot_id"), event.get("subtype"),
-                     event.get("user"), (event.get("text") or "")[:80])
-        if event.get("subtype"):
-            logger.info("[SKIP] Ignoring message with subtype=%s", event.get("subtype"))
+                     event.get("user"), event.get("thread_ts"), (event.get("text") or "")[:80])
+        if event.get("subtype") or event.get("bot_id"):
             return
-        if event.get("channel_type") == "im" and not event.get("bot_id"):
+        # Process DMs
+        if event.get("channel_type") == "im":
+            _process_ask(event, client)
+            return
+        # Process threaded replies in channels (follow-ups without @mention)
+        if event.get("thread_ts"):
             _process_ask(event, client)
 
     @app.event("app_mention")
@@ -186,26 +190,35 @@ def _register_handlers(app: App):
     @app.action("select_company")
     def handle_company_selection(ack, body, client):
         ack()
+        logger.info("[ACTION] select_company fired — body keys: %s", list(body.keys()))
         user_id = body["user"]["id"]
         selected = body["actions"][0]["selected_option"]["value"]
         _set_founder_company(user_id, selected)
+        logger.info("[ACTION] Company set: user=%s company=%s", user_id, selected)
         channel = body["channel"]["id"]
         # Thread the reply under the message containing the dropdown
         message_ts = body.get("message", {}).get("ts") or body.get("container", {}).get("message_ts")
         client.chat_postMessage(
             channel=channel,
             thread_ts=message_ts,
-            text=f":white_check_mark: Got it, you're with *{selected}*. What can I help you find in the ERA network?",
+            text=f":white_check_mark: Got it, you're with *{selected}*. Now @mention me with your ask, e.g. `@ERA Network Bot I need someone who understands enterprise sales`",
         )
 
     @app.event("reaction_added")
     def handle_reaction(event, client):
         """Log feedback reactions (thumbsup/thumbsdown) on bot messages."""
+        from src.query_log import log_feedback
         reaction = event.get("reaction", "")
         if reaction in ("+1", "thumbsup", "-1", "thumbsdown"):
             logger.info(
                 "Feedback: user=%s reaction=%s channel=%s ts=%s",
                 event.get("user"), reaction, event.get("item", {}).get("channel"), event.get("item", {}).get("ts"),
+            )
+            log_feedback(
+                slack_user_id=event.get("user", ""),
+                channel=event.get("item", {}).get("channel", ""),
+                message_ts=event.get("item", {}).get("ts", ""),
+                reaction=reaction,
             )
 
 
@@ -213,6 +226,24 @@ def start():
     """Start the Slack bot via Socket Mode."""
     global _app
     _app = App(token=SLACK_BOT_TOKEN)
+
+    # Catch-all middleware: logs EVERY incoming request before handlers run
+    @_app.middleware
+    def log_all_requests(body, next, logger=logger):
+        event = body.get("event", {})
+        action_type = body.get("type", "?")
+        logger.info(
+            "[RAW] type=%s event_type=%s subtype=%s user=%s channel=%s thread_ts=%s text=%r",
+            action_type,
+            event.get("type", body.get("command", "?")),
+            event.get("subtype"),
+            event.get("user", body.get("user", {}).get("id") if isinstance(body.get("user"), dict) else None),
+            event.get("channel", body.get("channel", {}).get("id") if isinstance(body.get("channel"), dict) else None),
+            event.get("thread_ts"),
+            (event.get("text") or "")[:100],
+        )
+        next()
+
     _register_handlers(_app)
     handler = SocketModeHandler(_app, SLACK_APP_TOKEN)
     logger.info("ERA Network Bot starting...")
