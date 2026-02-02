@@ -5,6 +5,7 @@
     "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {}
   },
   "containerEnv": {
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
     "GEMINI_API_KEY": "${localEnv:GEMINI_API_KEY}",
     "SLACK_BOT_TOKEN": "${localEnv:SLACK_BOT_TOKEN}",
     "SLACK_APP_TOKEN": "${localEnv:SLACK_APP_TOKEN}"

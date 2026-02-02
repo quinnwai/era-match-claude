@@ -62,7 +62,7 @@ LLM_PROVIDER = os.getenv("LLM_PROVIDER", "claude").lower()
 # Claude model config
 STAGE1_MODEL = "claude-sonnet-4-5-20250929"
 STAGE2_MODEL = "claude-sonnet-4-5-20250929"
-CLARITY_MODEL = "claude-haiku-3-5-20241022"
+CLARITY_MODEL = "claude-sonnet-4-5-20250929"
 
 # Gemini model config
 GEMINI_STAGE1_MODEL = os.getenv("GEMINI_STAGE1_MODEL", "gemini-2.5-pro")
