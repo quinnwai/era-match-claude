@@ -2,7 +2,7 @@ import sqlite3
 import json
 import time
 import logging
-from contextlib import closing
+from contextlib import contextmanager
 from pathlib import Path
 
 from src.config import PROJECT_ROOT
@@ -36,10 +36,14 @@ CREATE TABLE IF NOT EXISTS query_log (
 """
 
 
-def _connect() -> sqlite3.Connection:
+@contextmanager
+def _connect():
     conn = sqlite3.connect(LOG_DB_PATH)
     conn.execute(_CREATE_TABLE)
-    return conn
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 
 def log_query(
@@ -56,7 +60,7 @@ def log_query(
     total_secs: float | None = None,
 ) -> int:
     """Log a query and return the row ID."""
-    with closing(_connect()) as conn:
+    with _connect() as conn:
         cur = conn.execute(
             """INSERT INTO query_log
                (timestamp, slack_user_id, company_name, ask_text, result_type,
@@ -80,13 +84,13 @@ def log_query(
         )
         row_id = cur.lastrowid
         conn.commit()
-        logger.info("[LOG] Query logged: id=%d type=%s company=%s", row_id, result_type, company_name)
-        return row_id
+    logger.info("[LOG] Query logged: id=%d type=%s company=%s", row_id, result_type, company_name)
+    return row_id
 
 
 def log_feedback(slack_user_id: str, channel: str, message_ts: str, reaction: str):
     """Log a feedback reaction. Tries to match it to the most recent query from this user."""
-    with closing(_connect()) as conn:
+    with _connect() as conn:
         conn.execute(
             """UPDATE query_log SET feedback = ?
                WHERE id = (
@@ -97,4 +101,4 @@ def log_feedback(slack_user_id: str, channel: str, message_ts: str, reaction: st
             (reaction, slack_user_id),
         )
         conn.commit()
-        logger.info("[LOG] Feedback logged: user=%s reaction=%s", slack_user_id, reaction)
+    logger.info("[LOG] Feedback logged: user=%s reaction=%s", slack_user_id, reaction)

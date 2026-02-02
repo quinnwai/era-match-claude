@@ -62,7 +62,7 @@ LLM_PROVIDER = os.getenv("LLM_PROVIDER", "claude").lower()
 # Claude model config
 STAGE1_MODEL = "claude-sonnet-4-5-20250929"
 STAGE2_MODEL = "claude-sonnet-4-5-20250929"
-CLARITY_MODEL = "claude-sonnet-4-5-20250929"
+CLARITY_MODEL = "claude-haiku-3-5-20241022"
 
 # Gemini model config
 GEMINI_STAGE1_MODEL = os.getenv("GEMINI_STAGE1_MODEL", "gemini-2.5-pro")
@@ -73,6 +73,4 @@ GEMINI_CLARITY_MODEL = os.getenv("GEMINI_CLARITY_MODEL", "gemini-2.5-pro")
 STAGE1_MIN_CANDIDATES = 15
 STAGE1_MAX_CANDIDATES = 30
 TOP_K_RESULTS = 3
-
-# Input limits
-MAX_ASK_LENGTH = int(os.getenv("MAX_ASK_LENGTH", "2000"))
+MAX_ASK_LENGTH = 2000

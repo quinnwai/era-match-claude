@@ -1,6 +1,5 @@
 """Level 2 pipeline integration tests — requires LLM calls."""
-import sys, os, time
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import time
 
 import pytest
 from src.config import DB_PATH
