@@ -53,12 +53,13 @@ scripts/
 pip install -r requirements.txt
 
 # Run fast tests (no LLM calls)
-python -m pytest tests/test_profiles.py tests/test_slack_bot.py -v
+python -m pytest tests/test_profiles.py tests/test_slack_bot.py tests/test_matching_unit.py -v
 
 # Run integration tests (needs ANTHROPIC_API_KEY)
 python -m pytest tests/test_matching_pipeline.py -v
 
-# Run full eval suite (needs ANTHROPIC_API_KEY, ~5 min)
+# Run full eval suite (needs ANTHROPIC_API_KEY) — ALWAYS run this before merging
+# 8 test cases, 31 criteria, evaluated by LLM-as-judge. Target: ≥90% pass rate.
 python scripts/run_evaluation.py
 
 # Start Slack bot (needs all 3 tokens in .env)
