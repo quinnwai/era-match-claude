@@ -50,9 +50,10 @@ For each match, provide:
 
 RANKING CRITERIA (in order of importance):
 1. Direct relevance to the ask (domain expertise, role match, industry alignment)
-2. Quality of the match for the founder's specific company and stage
-3. Accessibility (actively advising startups, open to outreach)
-4. Strength of the potential connection (warm intro potential, shared affiliations)
+2. Target industry expertise: if the founder mentions a specific buyer or industry they sell into (e.g., "procurement teams", "hotels", "legal departments"), strongly prefer candidates with experience IN that target industry — not just people who do the function generically
+3. Quality of the match for the founder's specific company and stage
+4. Accessibility (actively advising startups, open to outreach)
+5. Strength of the potential connection (warm intro potential, shared affiliations)
 
 IMPORTANT:
 - Reference specific details from the person's profile in your explanations. Don't be generic.

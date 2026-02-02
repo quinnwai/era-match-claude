@@ -1,6 +1,6 @@
 """Tests for query logging (no LLM or Slack calls)."""
-import sys, os, sqlite3, tempfile
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import os
+import sqlite3
 
 import src.query_log as ql
 
