@@ -1,7 +1,6 @@
 import random
-from functools import lru_cache
 
-from src.db import get_enriched_contacts, get_research_profile, get_career_highlights
+from src.db import get_enriched_contacts, get_research_profiles_batch, get_career_highlights_batch
 
 
 def _truncate(text: str, max_chars: int = 120) -> str:
@@ -113,11 +112,15 @@ def format_full_profile(profile: dict, career: list[dict]) -> str:
 
 def get_full_profiles(db_path: str, contact_ids: list[int]) -> str:
     """Build full profiles for a list of contact IDs (Stage 2)."""
-    profiles = []
+    if not contact_ids:
+        return ""
+    profiles_map = get_research_profiles_batch(db_path, contact_ids)
+    career_map = get_career_highlights_batch(db_path, contact_ids)
+    formatted = []
     for cid in contact_ids:
-        profile = get_research_profile(db_path, cid)
+        profile = profiles_map.get(cid)
         if profile is None:
             continue
-        career = get_career_highlights(db_path, cid)
-        profiles.append(format_full_profile(profile, career))
-    return "\n\n---\n\n".join(profiles)
+        career = career_map.get(cid, [])
+        formatted.append(format_full_profile(profile, career))
+    return "\n\n---\n\n".join(formatted)

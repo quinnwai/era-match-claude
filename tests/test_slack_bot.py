@@ -1,6 +1,4 @@
 """Tests for Slack bot formatting and logic (no real Slack or LLM calls)."""
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.slack_bot import format_results_as_blocks, _build_company_selection_blocks, _set_founder_company, _identify_founder
 

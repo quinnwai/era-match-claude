@@ -58,9 +58,10 @@ SLACK_APP_TOKEN = _get_secret("SLACK_APP_TOKEN")
 # Model config
 STAGE1_MODEL = "claude-sonnet-4-5-20250929"
 STAGE2_MODEL = "claude-sonnet-4-5-20250929"
-CLARITY_MODEL = "claude-sonnet-4-5-20250929"
+CLARITY_MODEL = "claude-haiku-3-5-20241022"
 
 # Pipeline defaults
 STAGE1_MIN_CANDIDATES = 15
 STAGE1_MAX_CANDIDATES = 30
 TOP_K_RESULTS = 3
+MAX_ASK_LENGTH = 2000

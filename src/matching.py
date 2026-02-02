@@ -48,8 +48,19 @@ class Stage2Result(BaseModel):
     notes: str
 
 
+def _sanitize_prompt_input(text: str) -> str:
+    """Escape angle brackets to prevent XML tag injection in LLM prompts."""
+    return text.replace("<", "&lt;").replace(">", "&gt;")
+
+
+_client: anthropic.Anthropic | None = None
+
+
 def _get_client() -> anthropic.Anthropic:
-    return anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    global _client
+    if _client is None:
+        _client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    return _client
 
 
 def _tool_use_call(client, model, system, messages, schema_class, tool_name, retries=1, **kwargs):
@@ -186,6 +197,9 @@ def run_matching_pipeline(ask: str, company_name: str, db_path: str = DB_PATH, s
 
     t0 = _time.time()
     timings = {}
+
+    # Sanitize user input to prevent XML tag injection in prompts
+    ask = _sanitize_prompt_input(ask)
 
     company = get_company_context(db_path, company_name)
     company_ctx = _format_company_context(company)

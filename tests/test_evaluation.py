@@ -1,6 +1,5 @@
 """Level 3 LLM-as-judge evaluation harness."""
-import sys, os, json
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import json
 
 import anthropic
 from pydantic import BaseModel
