@@ -1,9 +1,11 @@
 import os
 import logging
+import threading
+import time as _time
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-from src.config import SLACK_BOT_TOKEN, SLACK_APP_TOKEN, DB_PATH
+from src.config import SLACK_BOT_TOKEN, SLACK_APP_TOKEN, DB_PATH, MAX_ASK_LENGTH
 from src.matching import run_matching_pipeline
 from src.db import get_all_era30_companies
 
@@ -14,19 +16,46 @@ logger = logging.getLogger(__name__)
 _app: App | None = None
 
 # In-memory store for founder -> company mapping (per Slack user ID)
+_user_company_lock = threading.Lock()
 _user_company_map: dict[str, str] = {}
+
+# Event deduplication: track recently processed event timestamps (TTL ~60s)
+_seen_events_lock = threading.Lock()
+_seen_events: dict[str, float] = {}  # event_ts -> wall clock time
+_SEEN_EVENT_TTL = 60.0
+
+
+def _is_duplicate_event(event_ts: str) -> bool:
+    """Return True if we've already processed this event timestamp recently."""
+    now = _time.time()
+    with _seen_events_lock:
+        # Prune expired entries
+        expired = [ts for ts, t in _seen_events.items() if now - t > _SEEN_EVENT_TTL]
+        for ts in expired:
+            del _seen_events[ts]
+        if event_ts in _seen_events:
+            return True
+        _seen_events[event_ts] = now
+    return False
+
+
+def _sanitize_ask(text: str) -> str:
+    """Escape XML-like closing tags that could break prompt structure."""
+    import re
+    # Escape closing tags for known prompt delimiters
+    return re.sub(r'</(ask|company_context|profiles|candidates)>', r'&lt;/\1&gt;', text)
 
 
 def _identify_founder(user_id: str, client) -> str | None:
     """Try to match a Slack user to an ERA30 company."""
-    if user_id in _user_company_map:
-        return _user_company_map[user_id]
-    return None
+    with _user_company_lock:
+        return _user_company_map.get(user_id)
 
 
 def _set_founder_company(user_id: str, company_name: str):
     """Store the founder's company mapping."""
-    _user_company_map[user_id] = company_name
+    with _user_company_lock:
+        _user_company_map[user_id] = company_name
 
 
 def _build_company_selection_blocks() -> list[dict]:
@@ -106,10 +135,16 @@ def _process_ask(event, client):
     """Process a founder's ask through the matching pipeline."""
     user_id = event["user"]
     channel = event["channel"]
-    thread_ts = event.get("thread_ts") or event["ts"]
+    event_ts = event.get("ts", "")
+    thread_ts = event.get("thread_ts") or event_ts
     text = event.get("text", "").strip()
 
     logger.info("[RECV] user=%s channel=%s thread_ts=%s text=%r", user_id, channel, thread_ts, text[:100])
+
+    # Deduplicate retried events from Slack
+    if event_ts and _is_duplicate_event(event_ts):
+        logger.info("[SKIP] Duplicate event ts=%s", event_ts)
+        return
 
     # Remove bot mention if present
     if text.startswith("<@"):
@@ -118,6 +153,19 @@ def _process_ask(event, client):
     if not text:
         logger.info("[SKIP] Empty text after cleanup")
         return
+
+    # Reject excessively long input
+    if len(text) > MAX_ASK_LENGTH:
+        logger.info("[SKIP] Input too long: %d chars", len(text))
+        client.chat_postMessage(
+            channel=channel,
+            thread_ts=thread_ts,
+            text=f":warning: Your ask is too long ({len(text)} chars). Please keep it under {MAX_ASK_LENGTH} characters.",
+        )
+        return
+
+    # Sanitize against prompt injection
+    text = _sanitize_ask(text)
 
     # Check if founder is identified
     company_name = _identify_founder(user_id, client)
