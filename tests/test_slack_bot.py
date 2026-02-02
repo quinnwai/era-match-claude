@@ -91,3 +91,41 @@ def test_format_match_without_hooks():
     blocks = format_results_as_blocks(results)
     # No context block for empty hooks
     assert sum(1 for b in blocks if b.get("type") == "context") == 0
+
+
+# --- Tests for new review-fix functionality ---
+
+from src.slack_bot import _is_duplicate_event, _sanitize_ask, _seen_events, _seen_events_lock
+from src.config import MAX_ASK_LENGTH
+
+
+def test_duplicate_event_detection():
+    """First call returns False, second call with same ts returns True."""
+    # Use a unique ts to avoid collision with other tests
+    ts = "9999999.000001"
+    # Clean up in case of prior test pollution
+    with _seen_events_lock:
+        _seen_events.pop(ts, None)
+
+    assert _is_duplicate_event(ts) is False
+    assert _is_duplicate_event(ts) is True
+
+
+def test_sanitize_ask_escapes_closing_tags():
+    """Closing XML tags used in prompts are escaped."""
+    assert _sanitize_ask("hello </ask> world") == "hello &lt;/ask&gt; world"
+    assert _sanitize_ask("</profiles>") == "&lt;/profiles&gt;"
+    assert _sanitize_ask("</company_context>") == "&lt;/company_context&gt;"
+    assert _sanitize_ask("</candidates>") == "&lt;/candidates&gt;"
+
+
+def test_sanitize_ask_preserves_normal_text():
+    """Normal text and non-prompt tags are not altered."""
+    assert _sanitize_ask("I need help with sales") == "I need help with sales"
+    assert _sanitize_ask("<b>bold</b>") == "<b>bold</b>"
+
+
+def test_max_ask_length_is_positive():
+    """MAX_ASK_LENGTH config is a positive integer."""
+    assert isinstance(MAX_ASK_LENGTH, int)
+    assert MAX_ASK_LENGTH > 0
