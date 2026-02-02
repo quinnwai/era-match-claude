@@ -1,17 +1,11 @@
 import time
 import logging
-from typing import Type
 from pydantic import BaseModel
 
 from src.backends.base import LLMBackend
-from src.config import GEMINI_API_KEY
+from src.config import GEMINI_API_KEY, GEMINI_STAGE1_MODEL, GEMINI_STAGE2_MODEL, GEMINI_CLARITY_MODEL
 
 logger = logging.getLogger(__name__)
-
-# Gemini model config
-GEMINI_STAGE1_MODEL = "gemini-2.5-pro"
-GEMINI_STAGE2_MODEL = "gemini-2.5-pro"
-GEMINI_CLARITY_MODEL = "gemini-2.5-pro"
 
 
 class GeminiBackend(LLMBackend):
@@ -48,7 +42,7 @@ class GeminiBackend(LLMBackend):
                     logger.info("Gemini call: model=%s elapsed=%.1fs", model, elapsed)
 
                 return response
-            except Exception as exc:
+            except (ConnectionError, TimeoutError, RuntimeError) as exc:
                 last_err = exc
                 if attempt < max_retries:
                     wait = 2 ** attempt
@@ -134,4 +128,4 @@ class GeminiBackend(LLMBackend):
         )
 
         result = response_schema.model_validate_json(response.text)
-        return [m.model_dump() for m in result.matches]
+        return {"matches": [m.model_dump() for m in result.matches], "notes": result.notes}

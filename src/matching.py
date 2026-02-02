@@ -1,5 +1,6 @@
 import time
 import logging
+import threading
 from pydantic import BaseModel
 
 from src.backends import get_backend
@@ -41,13 +42,16 @@ class Stage2Result(BaseModel):
 # --- Backend singleton ---
 
 _backend = None
+_backend_lock = threading.Lock()
 
 
 def _get_backend():
     global _backend
     if _backend is None:
-        _backend = get_backend(LLM_PROVIDER)
-        logger.info("Initialized LLM backend: %s", LLM_PROVIDER)
+        with _backend_lock:
+            if _backend is None:
+                _backend = get_backend(LLM_PROVIDER)
+                logger.info("Initialized LLM backend: %s", LLM_PROVIDER)
     return _backend
 
 
@@ -89,8 +93,8 @@ def stage1_screen(ask: str, company_context: str, compressed_profiles: str) -> l
     )
 
 
-def stage2_rank(ask: str, company_context: str, full_profiles: str) -> list[dict]:
-    """Rank 15-30 candidates down to top 3 with explanations."""
+def stage2_rank(ask: str, company_context: str, full_profiles: str) -> dict:
+    """Rank 15-30 candidates down to top 3 with explanations. Returns {matches, notes}."""
     backend = _get_backend()
     return backend.rank_matches(
         ask=ask,
@@ -145,7 +149,9 @@ def run_matching_pipeline(ask: str, company_name: str, db_path: str = DB_PATH, s
     full_profiles = get_full_profiles(db_path, candidate_ids)
     logger.info("[STEP 2] Ranking...")
     t2 = time.time()
-    matches = stage2_rank(ask, company_ctx, full_profiles)
+    stage2_result = stage2_rank(ask, company_ctx, full_profiles)
+    matches = stage2_result["matches"]
+    notes = stage2_result.get("notes")
     timings["stage2"] = time.time() - t2
     total = time.time() - t0
     logger.info("[STEP 2] Done → %d matches (%.1fs stage2, %.1fs total)", len(matches), timings["stage2"], total)
@@ -163,5 +169,5 @@ def run_matching_pipeline(ask: str, company_name: str, db_path: str = DB_PATH, s
         "type": "matches",
         "clarifying_question": None,
         "matches": matches,
-        "notes": None,
+        "notes": notes,
     }

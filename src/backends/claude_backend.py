@@ -1,6 +1,5 @@
 import time
 import logging
-from typing import Type
 from pydantic import BaseModel
 import anthropic
 
@@ -112,4 +111,4 @@ class ClaudeBackend(LLMBackend):
             schema_class=response_schema,
             tool_name="report_ranking",
         )
-        return [m.model_dump() for m in result.matches]
+        return {"matches": [m.model_dump() for m in result.matches], "notes": result.notes}
