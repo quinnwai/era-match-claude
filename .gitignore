@@ -6,3 +6,8 @@ __pycache__/
 .DS_Store
 *.db
 *.sqlite3
+
+# Time Capsule (frontend)
+time-capsule/node_modules/
+time-capsule/dist/
+time-capsule/.env
