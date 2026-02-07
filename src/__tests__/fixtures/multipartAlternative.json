@@ -1,0 +1,29 @@
+{
+  "id": "msg002",
+  "threadId": "thread002",
+  "snippet": "Check out this cool thing",
+  "payload": {
+    "mimeType": "multipart/alternative",
+    "headers": [
+      { "name": "From", "value": "\"Smith, Alice\" <alice@example.com>" },
+      { "name": "To", "value": "bob@example.com" },
+      { "name": "Date", "value": "Wed, 20 Jul 2011 09:15:00 +0000" },
+      { "name": "Subject", "value": "Check this out!" }
+    ],
+    "body": { "size": 0 },
+    "parts": [
+      {
+        "mimeType": "text/plain",
+        "body": {
+          "data": "Q2hlY2sgb3V0IHRoaXMgY29vbCB0aGluZyE="
+        }
+      },
+      {
+        "mimeType": "text/html",
+        "body": {
+          "data": "PGgxPkNoZWNrIG91dCB0aGlzIGNvb2wgdGhpbmchPC9oMT4="
+        }
+      }
+    ]
+  }
+}

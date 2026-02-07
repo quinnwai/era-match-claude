@@ -1,0 +1,40 @@
+{
+  "id": "msg003",
+  "threadId": "thread003",
+  "snippet": "Nested email content",
+  "payload": {
+    "mimeType": "multipart/mixed",
+    "headers": [
+      { "name": "From", "value": "nested@example.com" },
+      { "name": "To", "value": "user@example.com" },
+      { "name": "Date", "value": "Fri, 01 Jan 2010 00:00:00 +0000" },
+      { "name": "Subject", "value": "Nested multipart test" }
+    ],
+    "body": { "size": 0 },
+    "parts": [
+      {
+        "mimeType": "multipart/alternative",
+        "body": { "size": 0 },
+        "parts": [
+          {
+            "mimeType": "text/plain",
+            "body": {
+              "data": "UGxhaW4gdGV4dCBpbnNpZGUgbmVzdGVkIG11bHRpcGFydA=="
+            }
+          },
+          {
+            "mimeType": "text/html",
+            "body": {
+              "data": "PHA-SFRNTCBpbnNpZGUgbmVzdGVkIG11bHRpcGFydDwvcD4="
+            }
+          }
+        ]
+      },
+      {
+        "mimeType": "application/pdf",
+        "filename": "doc.pdf",
+        "body": { "attachmentId": "att001", "size": 12345 }
+      }
+    ]
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "id": "msg004",
+  "threadId": "thread004",
+  "snippet": "",
+  "payload": {
+    "mimeType": "text/plain",
+    "headers": [],
+    "body": {
+      "data": "Tm8gaGVhZGVycyBoZXJl"
+    }
+  }
+}

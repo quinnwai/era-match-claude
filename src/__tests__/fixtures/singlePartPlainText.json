@@ -1,0 +1,17 @@
+{
+  "id": "msg001",
+  "threadId": "thread001",
+  "snippet": "Hey, how are you doing?",
+  "payload": {
+    "mimeType": "text/plain",
+    "headers": [
+      { "name": "From", "value": "John Doe <john@example.com>" },
+      { "name": "To", "value": "jane@example.com" },
+      { "name": "Date", "value": "Tue, 14 Mar 2011 15:42:00 -0400" },
+      { "name": "Subject", "value": "Hey there!" }
+    ],
+    "body": {
+      "data": "SGV5LCBob3cgYXJlIHlvdSBkb2luZz8gSSBtaXNzIHlvdSE="
+    }
+  }
+}
